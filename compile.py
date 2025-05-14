@@ -4,7 +4,7 @@ import os
 
 project_dir = os.path.dirname(os.path.abspath(__file__))  # Папка со скриптом
 
-script_path = os.path.join(project_dir, 'autopostal6.py')
+script_path = os.path.join(project_dir, 'autopostal.py') # Основной файл
 output_dir = os.path.join(project_dir, 'dist')
 icon_path = os.path.join(project_dir, 'ico.ico')
 logo_path = os.path.join(project_dir, 'bckg.png')
