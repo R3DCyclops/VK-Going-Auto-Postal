@@ -4,7 +4,7 @@ import os
 
 project_dir = os.path.dirname(os.path.abspath(__file__))  # Папка со скриптом
 
-script_path = os.path.join(project_dir, 'autopostal.py')
+script_path = os.path.join(project_dir, 'autopostal6.py')
 output_dir = os.path.join(project_dir, 'dist')
 icon_path = os.path.join(project_dir, 'ico.ico')
 logo_path = os.path.join(project_dir, 'bckg.png')
@@ -32,9 +32,14 @@ command = [
     '--add-data', f'{icon_path};.',       # Добавляем иконку
     '--hidden-import=PySide6.QtCore',
     '--hidden-import=PySide6.QtGui',
+    '--hidden-import=PySide6.QtNetwork',
+    '--hidden-import=PySide6.QtSvg',
     '--hidden-import=PySide6.QtWidgets',
     '--hidden-import=vk_api',
     '--hidden-import=requests',
+    '--hidden-import=concurrent.futures',
+    '--hidden-import=concurrent.futures.thread',
+    '--hidden-import=pkg_resources',
     script_path
 ]
 
