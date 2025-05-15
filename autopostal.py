@@ -5,7 +5,7 @@ from datetime import datetime
 import vk_api
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QHBoxLayout, QTextEdit, QMessageBox, QSplitter, QDateTimeEdit
+    QVBoxLayout, QHBoxLayout, QTextEdit, QMessageBox, QSplitter, QDateTimeEdit, QCheckBox
 )
 from PySide6.QtCore import Qt, QThread, Signal, Slot
 from PySide6 import QtGui
@@ -13,6 +13,8 @@ from PySide6 import QtGui
 from concurrent.futures import ThreadPoolExecutor
 
 import threading 
+
+import random
 
 
 def resource_path(relative_path):
@@ -65,7 +67,8 @@ class PosterWorker(QThread):
     finished_signal = Signal()
     update_last_post_time = Signal(int)
 
-    def __init__(self, token, group_id, interval_hours, folder_path, start_timestamp, photos_per_post):
+    def __init__(self, token, group_id, interval_hours, folder_path, start_timestamp,
+                 photos_per_post, caption="", use_random_emoji=False, emoji_list=None):
         super().__init__()
         self.token = token
         self.group_id = group_id
@@ -76,7 +79,10 @@ class PosterWorker(QThread):
         self.posts_saved = 0
         self.paused = False
         self.pause_cond = threading.Condition(threading.Lock())
-
+        self.caption = caption
+        self.use_random_emoji = use_random_emoji
+        self.emoji_list = emoji_list or []
+    
     def toggle_pause(self):
         with self.pause_cond:
             self.paused = not self.paused
@@ -152,9 +158,16 @@ class PosterWorker(QThread):
                         f"[📅] Пост #{batch_number} запланирован на {datetime.fromtimestamp(post_time).strftime('%Y-%m-%d %H:%M')}"
                     )
 
+                post_text = self.caption
+
+                if self.use_random_emoji and self.emoji_list:
+                    emoji = random.choice(self.emoji_list)
+                    post_text += f"\n\n{emoji}"
+
                 vk.wall.post(
                     owner_id=int(self.group_id),
                     from_group=1,
+                    message=post_text,
                     attachments=",".join(media_ids),
                     publish_date=post_time
                 )
@@ -339,6 +352,21 @@ class VKAutoPosterApp(QWidget):
             }
         """)
         self.init_ui()
+        
+        self.emoji_list = [
+            "💋", "💄", "🧴", "🧼", "🧖‍♀️", "✨", "🌟", "💫", "💅", "💎", "🌸",
+            "👠", "👡", "👢", "👜", "👛", "👒", "🎀", "🧥", "🩱", "👗", "👚", "🕶️",
+            "💘", "💗", "💓", "💞", "❤️", "💌", "🌹", "💋", "😏", "😍", "😘", "🥰",
+            "🎉", "✨", "🍾", "🥂", "🍷", "🍸", "🍹",
+            "🧁", "🍰", "🍭", "🍬", "🍫", "🍩", "🍪", "🍧", "🍨", "🍦", "🧁",
+            "🧚", "🦄", "🧸", "🎀", "🔮", "🌌", "🪐", "💫", "🌠",
+            "😈", "👅", "🍑", "🍒", "🍓", "🥵", "👙", "🩳", "💦", "🩸",
+            "😳", "😍", "🤤", "😜", "😏", "😒", "😌", "🥰", "😱", "🤯", "😵‍💫",
+            "🐾", "🌷", "🌼", "🌻", "🌿", "🍀", "🍁", "🥀", "🌺",
+            "🌌", "🪐", "🌕", "🌑", "🛸", "👽", "👾", "🛰️",
+            "☕", "🍵", "🥛", "🍯", "🧁", "🍰", "🍩", "🍪", "🍧", "🍨", "🍦",
+            "🎵", "🎶", "🎧", "📻", "🎹", "🎼", "🎤", "🎙️", "🎚️", "📼",
+        ]
 
     def init_ui(self):
         main_layout = QHBoxLayout()
@@ -377,6 +405,13 @@ class VKAutoPosterApp(QWidget):
         self.datetime_edit.setCalendarPopup(True)
         left_layout.addWidget(QLabel("Дата и время первого поста:"))
         left_layout.addWidget(self.datetime_edit)
+        
+        self.caption_input = QLineEdit("")
+        left_layout.addWidget(QLabel("Подпись к постам (Необязательно):"))
+        left_layout.addWidget(self.caption_input)
+
+        self.random_emoji_checkbox = QCheckBox("Рандомизировать эмодзи")
+        left_layout.addWidget(self.random_emoji_checkbox)
 
         
         self.run_button = QPushButton("GO POSTAL!")
@@ -483,8 +518,12 @@ class VKAutoPosterApp(QWidget):
 
         self.run_button.setEnabled(False)
         self.pause_button.setEnabled(True)
+        caption = self.caption_input.text().strip()
+        use_random_emoji = self.random_emoji_checkbox.isChecked()
+
         self.worker = PosterWorker(
-            token, group_id, interval_hours, folder_path, start_timestamp, photos_per_post
+            token, group_id, interval_hours, folder_path, start_timestamp,
+            photos_per_post, caption, use_random_emoji, self.emoji_list
         )
         self.worker.log_signal.connect(self.append_log)
         self.worker.finished_signal.connect(lambda: self.run_button.setEnabled(True))
