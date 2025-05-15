@@ -185,20 +185,35 @@ class PosterWorker(QThread):
     
     def upload_photo(self, server, photo_path):
         import requests
-        with open(photo_path, 'rb') as f:
-            files = {'photo': f}
-            response = requests.post(server['upload_url'], files=files)
-        result = response.json()
-        return result['server'], result['photo'], result['hash']
+        import json
+        import time
 
-    def save_wall_photo(self, vk, group_id, server, photo, photo_hash):
-        photos = vk.photos.saveWallPhoto(
-            group_id=abs(int(group_id)),
-            server=server,
-            photo=photo,
-            hash=photo_hash
-        )
-        return f"photo{photos[0]['owner_id']}_{photos[0]['id']}"
+        for attempt in range(3):
+            try:
+                with open(photo_path, 'rb') as f:
+                    files = {'photo': f}
+                    response = requests.post(server['upload_url'], files=files, timeout=10)
+
+                if not response.text:
+                    raise Exception("Получен пустой ответ от сервера")
+
+                try:
+                    result = response.json()
+                except json.JSONDecodeError:
+                    raise Exception(f"Не удалось декодировать JSON: {response.text[:500]}...")
+
+                if "error" in result:
+                    raise Exception(f"Ошибка от ВК: {result['error']}")
+
+                return result['server'], result['photo'], result['hash']
+
+            except Exception as e:
+                self.log_signal.emit(f"[🔄] Ошибка загрузки {photo_path} (попытка {attempt + 1}/3): {e}")
+                if attempt < 2:
+                    time.sleep(2)
+                else:
+                    raise
+
         
     def save_wall_photo(self, vk, group_id, server, photo_data, photo_hash):
         photos = vk.photos.saveWallPhoto(
