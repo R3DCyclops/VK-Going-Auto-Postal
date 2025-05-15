@@ -40,6 +40,7 @@ command = [
     '--hidden-import=concurrent.futures',
     '--hidden-import=concurrent.futures.thread',
     '--hidden-import=pkg_resources',
+    '--hidden-import=random',
     script_path
 ]
 
